@@ -1,0 +1,128 @@
+---
+layout: post
+title:  "TIL: Kosaraju's Algorithm"
+date:   2020-05-04 06:00:00 +0530
+categories: TIL today-I-learned cp codeforces ladder14
+published: true
+---
+
+The problem I was looking at was [Codeforces Round #244 (Div. 2) C. Checkposts](https://codeforces.com/problemset/problem/427/C)
+After an hour and a half of struggling then another half for reading up and coding, I made my [submission](https://codeforces.com/contest/427/submission/78923726)) and it got accepted.
+The description gives us a `directed graph` and a `cost` associated with setting up a checkpost at that node. Here each node is said to be protected by a checkpost if it has a checkpost or you can visit that node from a check post and get back to the checkpost i.e it is `part of a cycle`.
+
+Initially I was breaking my head on how to find all simple cycles or how to even write the code for it as I knew nothing about how to maintain multiple cycles or do it in under required complexity.
+
+Then after some searches I found this [Youtube Video](https://www.youtube.com/watch?v=RpgcYiky7uw). Then the problem became much clear. The problem was to find all the strongly connected components of the graph.
+
+`Strongly Connected Components` are those subsets of the graph that can reach all other nodes in that subset.
+
+So we can solve the problem by finding the minimum cost in each Strongly Connected Component of the Graph.
+
+The algorithm has 4 parts:
+1. Do a DFS
+1. During DFS add nodes to stack when their traversal has completed
+1. Generate the reverse of the graph
+1. Do a DFS of the reverse of the graph in order of the stack
+
+
+## Implementation
+
+### Input
+
+{% highlight c++ %}
+
+	cin >> n;
+	cost.resize(n);
+	graph.resize(n);
+	rgraph.resize(n);
+	for(auto & i:cost)
+		cin >> i;
+	cin >> m;
+	for(int i=0;i<m;i++){
+		cin >> x >> y;
+		x--;y--;
+		graph[x].push_back(y);
+		rgraph[y].push_back(x);
+	}
+
+{% endhighlight %}
+
+The graph is in an adjacency list of all the edges. Here while taking the input itself we are storing the reverse of the graph as well. 
+
+### DFS and Stack Creation
+
+```cpp
+stack<int> st;
+void dfs(int x,set<int> & not_visited){
+	if(not_visited.count(x) == 0)
+		return;
+	not_visited.erase(x);
+	for(auto n:graph[x]){
+		dfs(n,not_visited);
+	}
+	st.push(x);
+}
+
+int main(){
+	...
+
+	set<int> unvisited;
+	for(int i=0;i<n;i++)
+		unvisited.insert(i);
+	
+	while(!unvisited.empty()){
+		dfs(*unvisited.begin(),unvisited);
+	}
+
+	...
+}
+```
+Using unvisited to avoid searching for the next empty node, it has all the nodes of the graph initially and then nodes are removed as they are visited.
+
+### Reverse DFS and Calculating the Minimum cost
+
+```c++
+
+	int mv=1e9+1,mc=0;
+
+	void rdfs(int x,set<int> & v){
+		if(v.count(x))
+			return;
+		if(cost[x] < mv){
+			mv=cost[x];
+			mc=1;
+		} else if (cost[x] == mv){
+			mc++;
+		}
+		v.insert(x);
+		for(auto pt:rgraph[x]){
+			rdfs(pt,v);
+		}
+	}
+
+	int main(){
+		...
+		long long ans = 0,ans_c = 1;
+		while(!st.empty()){
+			mv=1e9+1;
+			mc=0;
+			rdfs(st.top(),unvisited);
+			if(mc > 0){
+				ans+=mv;
+				ans_c = (ans_c*mc)%mod;
+			}
+			st.pop();
+		}
+		cout << ans << " " << ans_c << endl;
+		...
+	}
+```
+
+We can now traverse the reverse graph and search for the minimum value (`mv`)
+and number of occurences of the minimum value in the Strongly Connected Component as the question also asks us to find the number of ways the minimum cost can be achieved. This will just be the product of number of nodes in Strongly Connected Component with the lowest cost.
+
+```cpp
+78923726	May/04/2020 03:47	Accepted
+```
+
+The full solution is available on [Codeforces](https://codeforces.com/contest/427/submission/78923726).
